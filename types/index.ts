@@ -1,4 +1,3 @@
-// ── Employé ──────────────────────────────────────
 export type Department =
   | "Engineering"
   | "HR"
@@ -58,7 +57,6 @@ export interface EmployeeFormData {
   status: EmpStatus;
 }
 
-// ── Stats employés ────────────────────────────────
 export interface DeptStat {
   _id: Department;
   count: number;
@@ -81,7 +79,6 @@ export interface EmployeeStats {
   byContract: ContractStat[];
 }
 
-// ── Pagination ────────────────────────────────────
 export interface PaginatedResponse<T> {
   data: T[];
   total: number;
@@ -89,7 +86,6 @@ export interface PaginatedResponse<T> {
   limit: number;
 }
 
-// ── Congés ────────────────────────────────────────
 export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
 export type LeaveType =
   | "Congé Payé"
@@ -150,7 +146,6 @@ export interface LeaveStats {
   pending: number;
 }
 
-// ── Notifications ─────────────────────────────────
 export type NotifType = "info" | "success" | "warning" | "error";
 export type NotifCategory =
   | "conge"
@@ -209,7 +204,6 @@ export interface NotifResponse extends PaginatedResponse<Notification> {
   unread: number;
 }
 
-// ── Paie ──────────────────────────────────────────
 export interface PayslipResult {
   employee: string;
   department: string;
