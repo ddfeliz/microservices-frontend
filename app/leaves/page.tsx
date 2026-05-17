@@ -3,6 +3,10 @@ import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "../components/PageHeader";
 import { api } from "../../lib/api";
+import type {
+    Leave, LeaveFormData, LeaveStats,
+    LeaveStatus, LeaveStatusStat, Employee, PaginatedResponse
+} from "../../types";
 
 const LEAVE_TYPES = ["Congé Payé", "RTT", "Maladie", "Maternité", "Paternité", "Sans Solde", "Exceptionnel"];
 const STATUS_CONFIG: Record<string, { color: string, bg: string, label: string }> = {
@@ -12,23 +16,26 @@ const STATUS_CONFIG: Record<string, { color: string, bg: string, label: string }
     cancelled: { color: "#374151", bg: "#F3F4F6", label: "Annulé" },
 };
 
-const EMPTY_LEAVE = {
+const EMPTY_LEAVE: LeaveFormData = {
     employeeId: "", employeeName: "", department: "",
     type: "Congé Payé", startDate: "", endDate: "", days: "", reason: ""
 };
 
 export default function LeavesPage() {
-    const [leaves, setLeaves] = useState<any[]>([]);
-    const [stats, setStats] = useState<any>(null);
+    const [leaves, setLeaves] = useState<Leave[]>([]);
+    const [stats, setStats] = useState<LeaveStats | null>(null);
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [form, setForm] = useState<LeaveFormData>({
+        employeeId: "", employeeName: "", department: "",
+        type: "Congé Payé", startDate: "", endDate: "", days: "", reason: ""
+    });
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatus] = useState("");
     const [typeFilter, setType] = useState("");
     const [showModal, setShowModal] = useState(false);
-    const [form, setForm] = useState<any>(EMPTY_LEAVE);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
-    const [employees, setEmployees] = useState<any[]>([]);
 
     const load = async () => {
         setLoading(true);
@@ -47,15 +54,43 @@ export default function LeavesPage() {
         } finally { setLoading(false); }
     };
 
-    useEffect(() => { load(); }, [statusFilter, typeFilter]);
+    useEffect(() => {
+        const fetchLeaves = async () => {
+            setLoading(true);
+            try {
+                const params = new URLSearchParams();
+                if (statusFilter) params.set("status", statusFilter);
+                if (typeFilter) params.set("type", typeFilter);
+                params.set("limit", "50");
+                const [lv, st] = await Promise.all([
+                    api.leaves.list(`?${params}`) as Promise<PaginatedResponse<Leave>>,
+                    api.leaves.stats() as Promise<LeaveStats>,
+                ]);
+                setLeaves(lv.data ?? []);
+                setTotal(lv.total ?? 0);
+                setStats(st);
+            } finally { setLoading(false); }
+        };
+        void fetchLeaves();
+    }, [statusFilter, typeFilter]);
+
+    // Séparé pour les employés (sans setLoading)
+    useEffect(() => {
+        const fetchEmployees = async () => {
+            const r = await api.employees.list("?limit=100&status=active") as PaginatedResponse<Employee>;
+            setEmployees(r.data ?? []);
+        };
+        void fetchEmployees();
+    }, []);
 
     useEffect(() => {
         api.employees.list("?limit=100&status=active").then(r => setEmployees(r.data || []));
     }, []);
 
     const selectEmployee = (id: string) => {
-        const emp = employees.find((e: any) => e.employeeId === id || e._id === id);
-        if (emp) setForm((p: any) => ({
+        const emp = employees.find(e => e.employeeId === id || e._id === id);
+        if (!emp) return;
+        setForm(p => ({
             ...p,
             employeeId: emp.employeeId,
             employeeName: `${emp.firstName} ${emp.lastName}`,
@@ -69,7 +104,7 @@ export default function LeavesPage() {
             await api.leaves.create({ ...form, days: Number(form.days) });
             setShowModal(false);
             load();
-        } catch (e: any) { setError(e.message); }
+        } catch (e) { setError((e as Error).message); }
         finally { setSaving(false); }
     };
 
@@ -78,7 +113,7 @@ export default function LeavesPage() {
         load();
     };
 
-    const f = (k: string, v: string) => setForm((p: any) => ({ ...p, [k]: v }));
+    const f = (k: string, v: string) => setForm((p: LeaveFormData) => ({ ...p, [k]: v }));
 
     const fmtDate = (d: string) => new Date(d).toLocaleDateString("fr-FR");
 
@@ -98,7 +133,7 @@ export default function LeavesPage() {
                 {stats && (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 14, marginBottom: 20 }}>
                         {Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
-                            const found = stats.byStatus?.find((s: any) => s._id === key);
+                            const found = stats.byStatus?.find((s: LeaveStatusStat) => s._id === key);
                             return (
                                 <div key={key} className="stat-card" style={{ padding: 18 }}>
                                     <div style={{ fontSize: 22, fontWeight: 800, color: "#0F172A" }}>{found?.count || 0}</div>
@@ -135,7 +170,7 @@ export default function LeavesPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {leaves.map((l: any) => {
+                                {leaves.map((l: Leave) => {
                                     const cfg = STATUS_CONFIG[l.status];
                                     return (
                                         <tr key={l._id}>
@@ -199,7 +234,7 @@ export default function LeavesPage() {
                                     <select className="input" value={form.employeeId}
                                         onChange={e => selectEmployee(e.target.value)}>
                                         <option value="">Sélectionner un employé</option>
-                                        {employees.map((e: any) => (
+                                        {employees.map((e: Employee) => (
                                             <option key={e._id} value={e.employeeId}>
                                                 {e.firstName} {e.lastName} ({e.employeeId})
                                             </option>
@@ -215,15 +250,21 @@ export default function LeavesPage() {
                                     </select>
                                 </div>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                                    {[["Date début *", "startDate", "date"], ["Date fin *", "endDate", "date"], ["Nb jours *", "days", "number"]].map(
-                                        ([label, key, type]) => (
-                                            <div key={key}>
-                                                <label style={{ fontSize: 12, fontWeight: 600, color: "#64748B", display: "block", marginBottom: 6 }}>{label}</label>
-                                                <input className="input" type={type} value={form[key]}
-                                                    onChange={e => f(key, e.target.value)} />
-                                            </div>
-                                        )
-                                    )}
+                                    {(
+                                        [
+                                            ["Date début *", "startDate", "date"],
+                                            ["Date fin *", "endDate", "date"],
+                                            ["Nb jours *", "days", "number"],
+                                        ] as [string, keyof LeaveFormData, string][]
+                                    ).map(([label, key, type]) => (
+                                        <div key={key}>
+                                            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748B", display: "block", marginBottom: 6 }}>
+                                                {label}
+                                            </label>
+                                            <input className="input" type={type} value={form[key]}
+                                                onChange={e => f(key, e.target.value)} />
+                                        </div>
+                                    ))}
                                 </div>
                                 <div>
                                     <label style={{ fontSize: 12, fontWeight: 600, color: "#64748B", display: "block", marginBottom: 6 }}>Motif</label>

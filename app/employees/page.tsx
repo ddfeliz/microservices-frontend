@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "../components/PageHeader";
 import { api } from "../../lib/api";
+import type { Employee, EmployeeFormData, Department, ContractType, EmpStatus, PaginatedResponse } from "../../types";
 
 const DEPARTMENTS = ["Engineering", "HR", "Finance", "Marketing", "Operations", "Legal", "Sales"];
 const CONTRACT_TYPES = ["CDI", "CDD", "Stage", "Alternance"];
@@ -17,24 +18,28 @@ const DEPT_COLOR: Record<string, string> = {
     Marketing: "#F59E0B", Operations: "#EF4444", Legal: "#64748B", Sales: "#EC4899"
 };
 
-const EMPTY = {
+const EMPTY: EmployeeFormData = {
     firstName: "", lastName: "", email: "", phone: "",
     position: "", department: "Engineering", contractType: "CDI",
-    salary: "", city: "", skills: ""
+    salary: "", city: "", skills: "", status: "active"
 };
 
 export default function EmployeesPage() {
-    const [employees, setEmployees] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<Employee[]>([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [deptFilter, setDeptFilter] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
     const [showModal, setShowModal] = useState(false);
-    const [form, setForm] = useState<any>(EMPTY);
+    const [form, setForm] = useState<EmployeeFormData>({
+        firstName: "", lastName: "", email: "", phone: "",
+        position: "", department: "Engineering", contractType: "CDI",
+        salary: "", city: "", skills: "", status: "active"
+    });
+    const [selected, setSelected] = useState<Employee | null>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
-    const [selected, setSelected] = useState<any>(null);
 
     const load = async () => {
         setLoading(true);
@@ -50,14 +55,37 @@ export default function EmployeesPage() {
         } finally { setLoading(false); }
     };
 
-    useEffect(() => { load(); }, [search, deptFilter, statusFilter]);
+    useEffect(() => {
+        const fetchEmployees = async () => {
+            setLoading(true);
+            try {
+                const params = new URLSearchParams();
+                if (search) params.set("search", search);
+                if (deptFilter) params.set("department", deptFilter);
+                if (statusFilter) params.set("status", statusFilter);
+                params.set("limit", "50");
+                const res = await api.employees.list(`?${params}`) as PaginatedResponse<Employee>;
+                setEmployees(res.data ?? []);
+                setTotal(res.total ?? 0);
+            } finally { setLoading(false); }
+        };
+        void fetchEmployees();
+    }, [search, deptFilter, statusFilter]);
 
     const openCreate = () => { setForm(EMPTY); setSelected(null); setError(""); setShowModal(true); };
-    const openEdit = (e: any) => {
-        setForm({ ...e, salary: e.salary, city: e.address?.city || "", skills: e.skills?.join(", ") || "" });
+    const openEdit = (e: Employee) => {
+        setForm({
+            firstName: e.firstName, lastName: e.lastName,
+            email: e.email, phone: e.phone,
+            position: e.position, department: e.department,
+            contractType: e.contractType,
+            salary: String(e.salary),
+            city: e.address?.city ?? "",
+            skills: e.skills?.join(", ") ?? "",
+            status: e.status,
+        });
         setSelected(e);
-        setError("");
-        setShowModal(true);
+        setError(""); setShowModal(true);
     };
 
     const save = async () => {
@@ -66,14 +94,14 @@ export default function EmployeesPage() {
             const payload = {
                 ...form,
                 salary: Number(form.salary),
-                skills: form.skills.split(",").map((s: string) => s.trim()).filter(Boolean),
+                skills: form.skills.split(",").map(s => s.trim()).filter(Boolean),
                 address: { city: form.city, country: "France" },
             };
             if (selected) await api.employees.update(selected._id, payload);
             else await api.employees.create(payload);
             setShowModal(false);
             load();
-        } catch (e: any) { setError(e.message); }
+        } catch (e) { setError((e as Error).message); }
         finally { setSaving(false); }
     };
 
@@ -83,7 +111,7 @@ export default function EmployeesPage() {
         load();
     };
 
-    const f = (k: string, v: string) => setForm((p: any) => ({ ...p, [k]: v }));
+    const f = (k: string, v: string) => setForm((p: EmployeeFormData) => ({ ...p, [k]: v }));
 
     return (
         <div style={{ display: "flex" }}>
@@ -131,7 +159,7 @@ export default function EmployeesPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {employees.map((e: any) => (
+                                {employees.map((e: Employee) => (
                                     <tr key={e._id}>
                                         <td>
                                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -198,11 +226,16 @@ export default function EmployeesPage() {
                                 }}>{error}</div>
                             )}
                             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-                                {[
-                                    ["Prénom *", "firstName"], ["Nom *", "lastName"],
-                                    ["Email *", "email"], ["Téléphone", "phone"],
-                                    ["Poste *", "position"], ["Ville", "city"],
-                                ].map(([label, key]) => (
+                                {(
+                                    [
+                                        ["Prénom *", "firstName"],
+                                        ["Nom *", "lastName"],
+                                        ["Email *", "email"],
+                                        ["Téléphone", "phone"],
+                                        ["Poste *", "position"],
+                                        ["Ville", "city"],
+                                    ] as [string, keyof EmployeeFormData][]
+                                ).map(([label, key]) => (
                                     <div key={key}>
                                         <label style={{ fontSize: 12, fontWeight: 600, color: "#64748B", display: "block", marginBottom: 6 }}>
                                             {label}

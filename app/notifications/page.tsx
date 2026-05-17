@@ -3,6 +3,11 @@ import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "../components/PageHeader";
 import { api } from "../../lib/api";
+import type {
+    Notification, NotifFormData, NotifStats,
+    NotifCategoryStat, NotifType, NotifCategory, NotifPriority,
+    NotifResponse
+} from "../../types";
 
 const TYPE_CONFIG: Record<string, { icon: string, color: string, bg: string }> = {
     info: { icon: "ℹ️", color: "#1D4ED8", bg: "#EFF6FF" },
@@ -16,15 +21,18 @@ const PRIORITY_COLOR: Record<string, string> = {
 const CATEGORIES = ["conge", "paie", "rh", "systeme", "anniversaire", "contrat"];
 
 export default function NotificationsPage() {
-    const [notifs, setNotifs] = useState<any[]>([]);
-    const [stats, setStats] = useState<any>(null);
+    const [notifs, setNotifs] = useState<Notification[]>([]);
+    const [stats, setStats] = useState<NotifStats | null>(null);
+    const [form, setForm] = useState<NotifFormData>({
+        title: "", message: "", type: "info", category: "rh",
+        priority: "medium", employeeId: "all", employeeName: "Tous"
+    });
     const [total, setTotal] = useState(0);
     const [unread, setUnread] = useState(0);
     const [loading, setLoading] = useState(true);
     const [catFilter, setCat] = useState("");
     const [readFilter, setRead] = useState("");
     const [showModal, setShowModal] = useState(false);
-    const [form, setForm] = useState({ title: "", message: "", type: "info", category: "rh", priority: "medium", employeeId: "all", employeeName: "Tous" });
     const [saving, setSaving] = useState(false);
 
     const load = async () => {
@@ -42,7 +50,26 @@ export default function NotificationsPage() {
         } finally { setLoading(false); }
     };
 
-    useEffect(() => { load(); }, [catFilter, readFilter]);
+    useEffect(() => {
+        const fetchNotifs = async () => {
+            setLoading(true);
+            try {
+                const params = new URLSearchParams();
+                if (catFilter) params.set("category", catFilter);
+                if (readFilter) params.set("read", readFilter);
+                params.set("limit", "50");
+                const [n, s] = await Promise.all([
+                    api.notify.list(`?${params}`) as Promise<NotifResponse>,
+                    api.notify.stats() as Promise<NotifStats>,
+                ]);
+                setNotifs(n.data ?? []);
+                setTotal(n.total ?? 0);
+                setUnread(n.unread ?? 0);
+                setStats(s);
+            } finally { setLoading(false); }
+        };
+        void fetchNotifs();
+    }, [catFilter, readFilter]);
 
     const markRead = async (id: string) => { await api.notify.markRead(id); load(); };
     const markAll = async () => { await api.notify.markAllRead(); load(); };
@@ -52,7 +79,15 @@ export default function NotificationsPage() {
         try { await api.notify.create(form); setShowModal(false); load(); }
         finally { setSaving(false); }
     };
-    const f = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+    const f = (k: string, v: string) => setForm((p: NotifFormData) => ({ ...p, [k]: v }));
+
+    type SelectField = [string, keyof NotifFormData, string[]];
+
+    const selectFields: SelectField[] = [
+        ["Type", "type", ["info", "success", "warning", "error"]],
+        ["Catégorie", "category", CATEGORIES as string[]],
+        ["Priorité", "priority", ["low", "medium", "high", "urgent"]],
+    ];
 
     return (
         <div style={{ display: "flex" }}>
@@ -74,7 +109,7 @@ export default function NotificationsPage() {
                 {/* Stats par catégorie */}
                 {stats && (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12, marginBottom: 20 }}>
-                        {(stats.byCategory || []).map((c: any) => (
+                        {(stats.byCategory || []).map((c: NotifCategoryStat) => (
                             <div key={c._id} className="stat-card" style={{
                                 padding: 16, textAlign: "center",
                                 cursor: "pointer", border: catFilter === c._id ? "2px solid #3B82F6" : "1px solid #E8ECF0"
@@ -106,7 +141,7 @@ export default function NotificationsPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {loading ? (
                         <div style={{ padding: 60, textAlign: "center", color: "#94A3B8" }}>Chargement...</div>
-                    ) : notifs.map((n: any) => {
+                    ) : notifs.map((n: Notification) => {
                         const tc = TYPE_CONFIG[n.type] || TYPE_CONFIG.info;
                         return (
                             <div key={n._id} className="card" style={{
@@ -179,15 +214,14 @@ export default function NotificationsPage() {
                                         style={{ resize: "vertical" }} />
                                 </div>
                                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                                    {[
-                                        ["Type", "type", ["info", "success", "warning", "error"]],
-                                        ["Catégorie", "category", CATEGORIES],
-                                        ["Priorité", "priority", ["low", "medium", "high", "urgent"]],
-                                    ].map(([label, key, opts]: any) => (
+                                    {selectFields.map(([label, key, opts]) => (
                                         <div key={key}>
-                                            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748B", display: "block", marginBottom: 6 }}>{label}</label>
-                                            <select className="input" value={(form as any)[key]} onChange={e => f(key, e.target.value)}>
-                                                {opts.map((o: string) => <option key={o}>{o}</option>)}
+                                            <label style={{ fontSize: 12, fontWeight: 600, color: "#64748B", display: "block", marginBottom: 6 }}>
+                                                {label}
+                                            </label>
+                                            <select className="input" value={form[key] as string}
+                                                onChange={e => f(key, e.target.value)}>
+                                                {opts.map(o => <option key={o}>{o}</option>)}
                                             </select>
                                         </div>
                                     ))}

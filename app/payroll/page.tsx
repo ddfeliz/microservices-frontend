@@ -3,19 +3,24 @@ import { useState, useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import PageHeader from "../components/PageHeader";
 import { api } from "../../lib/api";
+import type { Employee, PayslipResult, BatchPayrollResult, BenchmarkResult, PaginatedResponse } from "../../types";
 
 export default function PayrollPage() {
-    const [employees, setEmployees] = useState<any[]>([]);
-    const [payslip, setPayslip] = useState<any>(null);
-    const [batchResult, setBatch] = useState<any>(null);
-    const [benchResults, setBench] = useState<any[]>([]);
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [payslip, setPayslip] = useState<PayslipResult | null>(null);
+    const [batchResult, setBatch] = useState<BatchPayrollResult | null>(null);
+    const [benchResults, setBench] = useState<BenchmarkResult[]>([]);
     const [running, setRunning] = useState(false);
     const [benchRunning, setBenchRunning] = useState(false);
     const [benchCount, setBenchCount] = useState(0);
-    const [selectedEmp, setSelectedEmp] = useState<any>(null);
+    const [selectedEmp, setSelectedEmp] = useState<Employee | null>(null);
 
     useEffect(() => {
-        api.employees.list("?limit=100&status=active").then(r => setEmployees(r.data || []));
+        const fetchEmployees = async () => {
+            const r = await api.employees.list("?limit=100&status=active") as PaginatedResponse<Employee>;
+            setEmployees(r.data ?? []);
+        };
+        void fetchEmployees();
     }, []);
 
     const calcPayslip = async () => {
@@ -37,9 +42,11 @@ export default function PayrollPage() {
         setRunning(true); setBatch(null);
         try {
             const res = await api.payroll.batch({
-                employees: employees.map(e => ({
+                employees: employees.map((e: Employee) => ({
                     name: `${e.firstName} ${e.lastName}`,
-                    salary: e.salary, department: e.department, contractType: e.contractType,
+                    salary: e.salary,
+                    department: e.department,
+                    contractType: e.contractType,
                 }))
             });
             setBatch(res);
@@ -47,16 +54,16 @@ export default function PayrollPage() {
     };
 
     const runBenchmark = async () => {
-        setBenchRunning(true); setBenchCount(0); setBenchResults([]);
+        setBenchRunning(true); setBenchCount(0); setBench([]);
         for (let i = 0; i < 20; i++) {
             const r = await api.payroll.benchmark(40);
-            setBenchResults(p => [r, ...p].slice(0, 15));
+            setBench(p => [r, ...p].slice(0, 15));
             setBenchCount(i + 1);
         }
         setBenchRunning(false);
     };
 
-    const row = (label: string, value: string, bold = false, color = "#374151") => (
+    const row = (label: string, value: string | number, bold = false, color = "#374151") => (
         <div style={{
             display: "flex", justifyContent: "space-between", padding: "10px 0",
             borderBottom: "1px solid #F1F5F9"
@@ -81,9 +88,12 @@ export default function PayrollPage() {
                     <div className="card" style={{ padding: 24 }}>
                         <h2 style={{ fontSize: 16, fontWeight: 700, marginBottom: 20 }}>🧾 Simulateur de fiche de paie</h2>
                         <select className="input" style={{ marginBottom: 14 }}
-                            onChange={e => setSelectedEmp(employees.find((emp: any) => emp._id === e.target.value))}>
+                            onChange={e => {
+                                const found = employees.find(emp => emp._id === e.target.value);
+                                if (found) setSelectedEmp(found);
+                            }}>
                             <option value="">Sélectionner un employé</option>
-                            {employees.map((e: any) => (
+                            {employees.map((e: Employee) => (
                                 <option key={e._id} value={e._id}>
                                     {e.firstName} {e.lastName} — {e.department}
                                 </option>
@@ -165,7 +175,7 @@ export default function PayrollPage() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {benchResults.map((r: any, i: number) => (
+                                {benchResults.map((r: BenchmarkResult, i: number) => (
                                     <tr key={i}>
                                         <td style={{ color: "#94A3B8", fontFamily: "var(--font-mono)" }}>{benchResults.length - i}</td>
                                         <td style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "#7C3AED" }}>

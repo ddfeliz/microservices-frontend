@@ -4,6 +4,10 @@ import Sidebar from "./components/Sidebar";
 import StatCard from "./components/StatCard";
 import PageHeader from "./components/PageHeader";
 import { api } from "../lib/api";
+import type {
+  EmployeeStats, LeaveStats, NotifStats,
+  Leave, DeptStat, StatusStat, ContractStat, PaginatedResponse
+} from "../types";
 
 const STATUS_COLOR: Record<string, string> = {
   active: "#10B981", inactive: "#6B7280", onLeave: "#F59E0B",
@@ -15,10 +19,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default function Dashboard() {
-  const [empStats, setEmpStats] = useState<any>(null);
-  const [leaveStats, setLeaveStats] = useState<any>(null);
-  const [notifStats, setNotifStats] = useState<any>(null);
-  const [recentLeaves, setRecentLeaves] = useState<any[]>([]);
+  const [empStats, setEmpStats] = useState<EmployeeStats | null>(null);
+  const [leaveStats, setLeaveStats] = useState<LeaveStats | null>(null);
+  const [notifStats, setNotifStats] = useState<NotifStats | null>(null);
+  const [recentLeaves, setRecentLeaves] = useState<Leave[]>([]);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
 
@@ -55,7 +59,28 @@ export default function Dashboard() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    const fetchAll = async () => {
+      try {
+        const [e, l, n, lv] = await Promise.all([
+          api.employees.stats(),
+          api.leaves.stats(),
+          api.notify.stats(),
+          api.leaves.list("?limit=5&status=pending"),
+        ]);
+        setEmpStats(e as EmployeeStats);
+        setLeaveStats(l as LeaveStats);
+        setNotifStats(n as NotifStats);
+        setRecentLeaves((lv as PaginatedResponse<Leave>).data ?? []);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void fetchAll();
+  }, []);
+
 
   return (
     <div style={{ display: "flex" }}>
@@ -97,7 +122,7 @@ export default function Dashboard() {
                   👥 Effectifs par département
                 </h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {(empStats?.byDepartment || []).map((d: any) => {
+                  {(empStats?.byDepartment || []).map((d: DeptStat) => {
                     const pct = Math.round((d.count / (empStats?.total || 1)) * 100);
                     return (
                       <div key={d._id}>
@@ -129,7 +154,7 @@ export default function Dashboard() {
                   <p style={{ color: "#94A3B8", fontSize: 14 }}>Aucune demande en attente</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {recentLeaves.map((l: any) => (
+                    {recentLeaves.map((l: Leave) => (
                       <div key={l._id} style={{
                         display: "flex", justifyContent: "space-between", alignItems: "center",
                         padding: "12px 14px", background: "#F8FAFC", borderRadius: 10
@@ -153,7 +178,7 @@ export default function Dashboard() {
                   📋 Types de contrats
                 </h2>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                  {(empStats?.byContract || []).map((c: any) => (
+                  {(empStats?.byContract || []).map((c: ContractStat) => (
                     <div key={c._id} style={{
                       padding: "16px", background: "#F8FAFC", borderRadius: 12, textAlign: "center"
                     }}>
@@ -170,7 +195,7 @@ export default function Dashboard() {
                   🟢 Statuts des employés
                 </h2>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {(empStats?.byStatus || []).map((s: any) => (
+                  {(empStats?.byStatus || []).map((s: StatusStat) => (
                     <div key={s._id} style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                       padding: "14px 16px", borderRadius: 10,
