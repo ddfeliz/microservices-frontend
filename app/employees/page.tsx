@@ -94,7 +94,7 @@ export default function EmployeesPage() {
             const payload = {
                 ...form, salary: Number(form.salary),
                 skills: form.skills.split(",").map(s => s.trim()).filter(Boolean),
-                address: { city: form.city, country: "France" },
+                address: { street: "", city: form.city, country: "France" },
             };
             if (selected) await api.employees.update(selected._id, payload);
             else await api.employees.create(payload);

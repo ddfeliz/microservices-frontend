@@ -10,7 +10,7 @@ export type ContractType = "CDI" | "CDD" | "Stage" | "Alternance";
 export type EmpStatus = "active" | "inactive" | "onLeave";
 
 export interface IAddress {
-  street: string;
+  street?: string;
   city: string;
   country: string;
 }

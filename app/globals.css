@@ -42,7 +42,7 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-* {
+/* {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
@@ -228,7 +228,7 @@ tbody td {
   max-width: 560px;
   max-height: 90vh;
   overflow-y: auto;
-}
+} */
 
 @theme inline {
   --font-heading: var(--font-mono);
@@ -307,13 +307,19 @@ tbody td {
   --sidebar-ring: oklch(0.556 0 0);
 }
 
+:root {
+  --sidebar-w: 240px;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }
+
   html {
     @apply font-mono;
   }
