@@ -4,7 +4,7 @@ import Shell from "../components/Shell";
 import PageHeader from "../components/PageHeader";
 import { api } from "../../lib/api";
 import type { Employee, PayslipResult, BatchPayrollResult, BenchmarkResult, PaginatedResponse } from "../../types";
-import { Play, Zap } from "lucide-react";
+import { Play, Zap, Stethoscope, Activity, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import {
@@ -82,9 +82,9 @@ export default function PayrollPage() {
     };
 
     const row = (label: string, value: string | number, highlight = false) => (
-        <div className="flex justify-between py-2 border-b last:border-0">
+        <div className="flex justify-between py-2 border-b last:border-0 border-slate-100 dark:border-slate-800">
             <span className="text-sm text-muted-foreground">{label}</span>
-            <span className={cn("text-sm font-mono", highlight && "font-semibold text-foreground")}>
+            <span className={cn("text-sm font-mono", highlight && "font-semibold text-emerald-600 dark:text-emerald-400")}>
                 {value}
             </span>
         </div>
@@ -92,27 +92,33 @@ export default function PayrollPage() {
 
     return (
         <Shell>
-            <PageHeader title="Paie & Performance" subtitle="Simulation de paie et benchmark HPA" />
+            <PageHeader 
+                title="Facturation & Coûts médicaux" 
+                subtitle="Simulation des coûts de soins et benchmark HPA" 
+            />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
 
-                {/* Simulateur */}
-                <Card>
+                {/* Simulateur de coûts */}
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
                     <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-semibold">Simulateur de fiche de paie</CardTitle>
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <Stethoscope size={16} className="text-emerald-500" />
+                            Simulateur de coûts médicaux
+                        </CardTitle>
                         <CardDescription className="text-xs">
-                            Calcul individuel avec cotisations et primes
+                            Calcul individuel des coûts de soins (part patient + sécu)
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <div className="space-y-1.5">
-                            <Label className="text-xs">Employé</Label>
+                            <Label className="text-xs font-semibold text-slate-700 dark:text-slate-300">Patient</Label>
                             <Select onValueChange={id => {
                                 const found = employees.find(e => e._id === id);
                                 if (found) setSelectedEmp(found);
                             }}>
-                                <SelectTrigger className="h-8 text-sm">
-                                    <SelectValue placeholder="Sélectionner un employé" />
+                                <SelectTrigger className="h-8 text-sm border-slate-200 focus:border-emerald-300">
+                                    <SelectValue placeholder="Sélectionner un patient" />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {employees.map(e => (
@@ -123,58 +129,81 @@ export default function PayrollPage() {
                                 </SelectContent>
                             </Select>
                         </div>
-                        <Button className="w-full" size="sm" onClick={calcPayslip}
-                            disabled={!selectedEmp || running}>
+                        <Button 
+                            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm" 
+                            size="sm" 
+                            onClick={calcPayslip}
+                            disabled={!selectedEmp || running}
+                        >
                             <Play size={13} className="mr-1.5" />
-                            {running ? "Calcul..." : "Calculer"}
+                            {running ? "Calcul en cours..." : "Calculer les coûts"}
                         </Button>
 
                         {payslip && (
                             <div className="pt-2">
-                                <Separator className="mb-3" />
-                                {row("Salaire brut mensuel", `${payslip.gross.toLocaleString("fr")} €`)}
-                                {row("Cotisations salariales", `− ${payslip.employeeContributions.toLocaleString("fr")} €`)}
-                                {row("Net avant impôt", `${payslip.netBeforeTax.toLocaleString("fr")} €`)}
-                                {row("Prime ancienneté", `+ ${payslip.seniorityBonus.toLocaleString("fr")} €`)}
-                                {row("Prime performance", `+ ${payslip.perfBonus.toLocaleString("fr")} €`)}
-                                {row("Tickets restaurant", `+ ${payslip.mealVouchers.toLocaleString("fr")} €`)}
-                                <Separator className="my-2" />
-                                {row("NET À PAYER", `${payslip.netTotal.toLocaleString("fr")} €`, true)}
+                                <Separator className="mb-3 bg-slate-200 dark:bg-slate-800" />
+                                {row("Coût total des soins", `${payslip.gross.toLocaleString("fr")} €`)}
+                                {row("Part patient (mutuelle + ticket modérateur)", `− ${payslip.employeeContributions.toLocaleString("fr")} €`)}
+                                {row("Prise en charge sécu / mutuelle", `${payslip.netBeforeTax.toLocaleString("fr")} €`)}
+                                {row("Prime d'ancienneté patient fidèle", `+ ${payslip.seniorityBonus.toLocaleString("fr")} €`)}
+                                {row("Programme prévention santé", `+ ${payslip.perfBonus.toLocaleString("fr")} €`)}
+                                {row("Forfaits hospitaliers", `+ ${payslip.mealVouchers.toLocaleString("fr")} €`)}
+                                <Separator className="my-2 bg-slate-200 dark:bg-slate-800" />
+                                {row("RESTE À CHARGE PATIENT", `${payslip.netTotal.toLocaleString("fr")} €`, true)}
                                 <p className="text-[11px] text-muted-foreground font-mono mt-2">
-                                    {payslip.durationMs}ms · {payslip.pod?.slice(0, 16)}
+                                    {payslip.durationMs}ms · Service {payslip.pod?.slice(0, 16)}
                                 </p>
                             </div>
                         )}
                     </CardContent>
                 </Card>
 
-                {/* Masse salariale */}
-                <Card>
+                {/* Coûts globaux */}
+                <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
                     <CardHeader className="pb-3">
-                        <CardTitle className="text-sm font-semibold">Masse salariale globale</CardTitle>
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <Heart size={16} className="text-emerald-500" />
+                            Coûts de soins globaux
+                        </CardTitle>
                         <CardDescription className="text-xs">
-                            Traitement batch de tous les employés actifs
+                            Traitement batch de tous les patients actifs
                         </CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <p className="text-xs text-muted-foreground">
-                            Lance le calcul simultané pour les {employees.length} employés actifs.
-                            Intensif CPU — déclenche le HPA.
+                            Calcule le coût total des soins pour les {employees.length} patients actifs.
+                            Traitement intensif CPU — déclenche le HPA (autoscaling Kubernetes).
                         </p>
-                        <Button className="w-full" size="sm" variant="outline"
-                            onClick={calcBatch} disabled={running || employees.length === 0}>
+                        <Button 
+                            className="w-full" 
+                            size="sm" 
+                            variant="outline"
+                            onClick={calcBatch} 
+                            disabled={running || employees.length === 0}
+                        >
                             <Play size={13} className="mr-1.5" />
-                            {running ? "Traitement..." : `Batch (${employees.length} employés)`}
+                            {running ? "Traitement en cours..." : `Batch (${employees.length} patients)`}
                         </Button>
 
                         {batch && (
                             <div className="pt-2">
-                                <Separator className="mb-3" />
-                                {row("Employés traités", batch.count)}
-                                {row("Masse mensuelle", `${batch.totalPayroll.toLocaleString("fr")} €`, true)}
-                                {row("Masse annuelle", `${(batch.totalPayroll * 12).toLocaleString("fr")} €`, true)}
+                                <Separator className="mb-3 bg-slate-200 dark:bg-slate-800" />
+                                {row("Patients traités", batch.count)}
+                                {row("Coût mensuel total des soins", `${batch.totalPayroll.toLocaleString("fr")} €`, true)}
+                                {row("Coût annuel total", `${(batch.totalPayroll * 12).toLocaleString("fr")} €`, true)}
+                                <div className="mt-3 p-2 bg-emerald-50 dark:bg-emerald-950/20 rounded-lg">
+                                    <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold mb-1">
+                                        📊 Moyennes
+                                    </p>
+                                    <div className="flex justify-between text-[10px]">
+                                        <span className="text-muted-foreground">Coût moyen par patient</span>
+                                        <span className="font-mono font-semibold text-emerald-600">
+                                            {(batch.totalPayroll / batch.count).toLocaleString("fr")} €/mois
+                                        </span>
+                                    </div>
+                                </div>
                                 <p className="text-[11px] text-muted-foreground font-mono mt-2">
-                                    {batch.durationMs}ms · {batch.pod?.slice(0, 16)}
+                                    {batch.durationMs}ms · Service {batch.pod?.slice(0, 16)}
                                 </p>
                             </div>
                         )}
@@ -183,35 +212,42 @@ export default function PayrollPage() {
             </div>
 
             {/* Benchmark */}
-            <Card>
+            <Card className="border-slate-200 dark:border-slate-800 shadow-sm">
                 <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
                     <div>
-                        <CardTitle className="text-sm font-semibold">Benchmark CPU — HPA</CardTitle>
+                        <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                            <Activity size={16} className="text-emerald-500" />
+                            Benchmark CPU — Autoscaling Médical
+                        </CardTitle>
                         <CardDescription className="text-xs mt-1">
-                            20 requêtes Fibonacci(40) — observer kubectl get hpa
+                            20 calculs intensifs Fibonacci(40) — observez le scaling automatique des pods
                         </CardDescription>
                     </div>
-                    <Button size="sm" onClick={runBenchmark} disabled={benchRun}
-                        className="shrink-0">
+                    <Button 
+                        size="sm" 
+                        onClick={runBenchmark} 
+                        disabled={benchRun}
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shrink-0"
+                    >
                         <Zap size={13} className="mr-1.5" />
-                        {benchRun ? `En cours (${benchCount}/20)` : "Lancer benchmark"}
+                        {benchRun ? `En cours (${benchCount}/20)` : "Lancer benchmark médical"}
                     </Button>
                 </CardHeader>
                 <CardContent>
                     {benchResults.length > 0 && (
                         <Table>
                             <TableHeader>
-                                <TableRow>
-                                    <TableHead className="text-xs">#</TableHead>
-                                    <TableHead className="text-xs">Pod</TableHead>
-                                    <TableHead className="text-xs">Fibonacci(40)</TableHead>
-                                    <TableHead className="text-xs">Éléments triés</TableHead>
-                                    <TableHead className="text-xs text-right">Durée</TableHead>
+                                <TableRow className="bg-slate-50 dark:bg-slate-900">
+                                    <TableHead className="text-xs font-semibold">#</TableHead>
+                                    <TableHead className="text-xs font-semibold">Service/Pod</TableHead>
+                                    <TableHead className="text-xs font-semibold">Calcul médical</TableHead>
+                                    <TableHead className="text-xs font-semibold">Analyses triées</TableHead>
+                                    <TableHead className="text-xs font-semibold text-right">Temps réponse</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {benchResults.map((r: BenchmarkResult, i: number) => (
-                                    <TableRow key={i}>
+                                    <TableRow key={i} className="hover:bg-emerald-50/50 dark:hover:bg-emerald-950/20">
                                         <TableCell className="text-xs text-muted-foreground font-mono">
                                             {benchResults.length - i}
                                         </TableCell>
@@ -219,15 +255,18 @@ export default function PayrollPage() {
                                             {r.pod?.slice(0, 18)}
                                         </TableCell>
                                         <TableCell className="text-xs font-mono">
-                                            {r.input} → {r.fibonacci?.toLocaleString("fr")}
+                                            fibo({r.input}) → {r.fibonacci?.toLocaleString("fr")}
                                         </TableCell>
                                         <TableCell className="text-xs text-muted-foreground">
-                                            {r.sortedElements?.toLocaleString("fr")}
+                                            {r.sortedElements?.toLocaleString("fr")} résultats
                                         </TableCell>
                                         <TableCell className="text-right">
                                             <Badge
                                                 variant={r.durationMs > 1500 ? "destructive" : r.durationMs > 800 ? "outline" : "secondary"}
-                                                className="text-xs font-mono"
+                                                className={cn(
+                                                    "text-xs font-mono",
+                                                    r.durationMs <= 800 && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                                                )}
                                             >
                                                 {r.durationMs}ms
                                             </Badge>
@@ -236,6 +275,14 @@ export default function PayrollPage() {
                                 ))}
                             </TableBody>
                         </Table>
+                    )}
+                    {benchResults.length === 0 && !benchRun && (
+                        <div className="text-center py-8">
+                            <Activity size={32} className="text-slate-300 mx-auto mb-2" />
+                            <p className="text-xs text-muted-foreground">
+                                Lancez le benchmark pour tester l'autoscaling de l'infrastructure médicale
+                            </p>
+                        </div>
                     )}
                 </CardContent>
             </Card>

@@ -1,12 +1,16 @@
 export type Department =
-  | "Engineering"
-  | "HR"
-  | "Finance"
-  | "Marketing"
-  | "Operations"
-  | "Legal"
-  | "Sales";
-export type ContractType = "CDI" | "CDD" | "Stage" | "Alternance";
+  | "Cardiologie"
+  | "Pédiatrie"
+  | "Neurologie"
+  | "Dermatologie"
+  | "Urgences"
+  | "Chirurgie"
+  | "Radiologie";
+export type ContractType =
+  | "Hospitalisation"
+  | "Consultation externe"
+  | "Urgence"
+  | "Soins de suite";
 export type EmpStatus = "active" | "inactive" | "onLeave";
 
 export interface IAddress {
@@ -15,10 +19,17 @@ export interface IAddress {
   country: string;
 }
 
-export interface ILeaveBalance {
-  paid: number;
-  rtt: number;
-  sick: number;
+export interface IMedicalHistory {
+  antecedents: string[];
+  allergies: string[];
+  traitements: string[];
+  groupeSanguin?: string;
+}
+
+export interface IPatientBalance {
+  consultations: number;
+  examens: number;
+  hospitalisations: number;
 }
 
 export interface Employee {
@@ -28,17 +39,18 @@ export interface Employee {
   email: string;
   phone: string;
   avatar: string;
-  position: string;
+  position: string; // Médecin traitant / Spécialiste
   department: Department;
   employeeId: string;
   managerId: Employee | null;
-  hireDate: string;
+  hireDate: string; // Date d'admission
   contractType: ContractType;
-  salary: number;
+  salary: number; // Coût estimé des soins
   status: EmpStatus;
   address: IAddress;
-  skills: string[];
-  leaveBalance: ILeaveBalance;
+  skills: string[]; // Antécédents médicaux
+  leaveBalance: IPatientBalance;
+  medicalHistory?: IMedicalHistory;
   createdAt: string;
   updatedAt: string;
 }
@@ -88,27 +100,28 @@ export interface PaginatedResponse<T> {
 
 export type LeaveStatus = "pending" | "approved" | "rejected" | "cancelled";
 export type LeaveType =
-  | "Congé Payé"
-  | "RTT"
-  | "Maladie"
-  | "Maternité"
-  | "Paternité"
-  | "Sans Solde"
-  | "Exceptionnel";
+  | "Consultation générale"
+  | "Consultation spécialiste"
+  | "Urgence"
+  | "Téléconsultation"
+  | "Chirurgie programmée"
+  | "Examen radiologique"
+  | "IRM / Scanner"
+  | "Analyse biologique";
 
 export interface Leave {
   _id: string;
-  employeeId: string;
-  employeeName: string;
+  employeeId: string; // Patient ID
+  employeeName: string; // Patient name
   department: string;
   type: LeaveType;
-  startDate: string;
-  endDate: string;
-  days: number;
+  startDate: string; // Date du rendez-vous
+  endDate: string; // Heure du rendez-vous
+  days: number; // Durée en heures
   status: LeaveStatus;
-  reason: string;
+  reason: string; // Motif / Symptômes
   comment: string;
-  approvedBy: string | null;
+  approvedBy: string | null; // Médecin traitant
   approvedAt: string | null;
   createdAt: string;
 }
@@ -127,7 +140,7 @@ export interface LeaveFormData {
 export interface LeaveStatusStat {
   _id: LeaveStatus;
   count: number;
-  totalDays: number;
+  totalDays: number; // Total heures
 }
 export interface LeaveTypeStat {
   _id: LeaveType;
@@ -148,18 +161,18 @@ export interface LeaveStats {
 
 export type NotifType = "info" | "success" | "warning" | "error";
 export type NotifCategory =
-  | "conge"
-  | "paie"
-  | "rh"
-  | "systeme"
-  | "anniversaire"
-  | "contrat";
+  | "consultation"
+  | "resultat"
+  | "urgence"
+  | "rappel"
+  | "ordonnance"
+  | "hospitalisation";
 export type NotifPriority = "low" | "medium" | "high" | "urgent";
 
 export interface Notification {
   _id: string;
-  employeeId: string;
-  employeeName: string;
+  employeeId: string; // Patient ID
+  employeeName: string; // Patient name
   title: string;
   message: string;
   type: NotifType;
@@ -169,7 +182,7 @@ export interface Notification {
   readAt: string | null;
   actionUrl: string;
   actionLabel: string;
-  sentBy: string;
+  sentBy: string; // Médecin / Service
   createdAt: string;
 }
 
@@ -208,13 +221,13 @@ export interface PayslipResult {
   employee: string;
   department: string;
   contractType: string;
-  gross: number;
-  employeeContributions: number;
-  employerContributions: number;
+  gross: number; // Coût total des soins
+  employeeContributions: number; // Part patient
+  employerContributions: number; // Part sécurité sociale
   netBeforeTax: number;
-  seniorityBonus: number;
-  perfBonus: number;
-  mealVouchers: number;
+  seniorityBonus: number; // Ancienneté patient
+  perfBonus: number; // Adhésion programme santé
+  mealVouchers: number; // Forfaits repas hospitaliers
   netTotal: number;
   fibonacciCheck: number;
   durationMs: number;
@@ -224,7 +237,7 @@ export interface PayslipResult {
 export interface BatchPayrollResult {
   count: number;
   payslips: PayslipResult[];
-  totalPayroll: number;
+  totalPayroll: number; // Coût total des soins
   durationMs: number;
   pod: string;
 }

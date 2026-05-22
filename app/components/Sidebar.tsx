@@ -12,10 +12,10 @@ import { cn } from "@/lib/utils";
 
 const NAV = [
     { href: "/", icon: LayoutDashboard, label: "Tableau de bord" },
-    { href: "/employees", icon: Users, label: "Employés" },
-    { href: "/leaves", icon: CalendarOff, label: "Congés" },
-    { href: "/notifications", icon: Bell, label: "Notifications" },
-    { href: "/payroll", icon: Wallet, label: "Paie & Perf." },
+    { href: "/employees", icon: Users, label: "Patients" },
+    { href: "/leaves", icon: CalendarOff, label: "Rendez-vous" },
+    { href: "/notifications", icon: Bell, label: "Alertes" },
+    { href: "/payroll", icon: Wallet, label: "Facturation" },
 ];
 
 export default function Sidebar() {
@@ -24,26 +24,27 @@ export default function Sidebar() {
 
     return (
         <aside className={cn(
-            "fixed left-0 top-0 h-screen flex flex-col border-r",
-            "bg-background z-40"
+            "fixed left-0 top-0 h-screen flex flex-col",
+            "bg-gradient-to-b from-slate-900 to-slate-800 border-r border-slate-700",
+            "shadow-xl z-40"
         )} style={{ width: "var(--sidebar-w)" }}>
 
             {/* Logo */}
-            <div className="flex items-center gap-3 px-5 py-5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-background">
-                    <Activity size={16} />
+            <div className="flex items-center gap-3 px-5 py-6 bg-gradient-to-r from-emerald-600 to-teal-700 mx-2 mt-2 rounded-lg">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm">
+                    <Activity size={18} className="text-white" />
                 </div>
                 <div>
-                    <p className="text-sm font-semibold leading-none">RH Cloud</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">MERN · K8s</p>
+                    <p className="text-sm font-bold leading-none text-white">MediCare</p>
+                    <p className="text-[10px] text-emerald-200 mt-0.5">Santé Connectée</p>
                 </div>
             </div>
 
-            <Separator />
+            <Separator className="bg-slate-700 my-3" />
 
             {/* Navigation */}
             <nav className="flex-1 px-3 py-4 space-y-1">
-                <p className="px-2 mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                <p className="px-2 mb-3 text-[10px] font-bold uppercase tracking-wider text-emerald-300">
                     Navigation
                 </p>
                 {NAV.map(({ href, icon: Icon, label }) => {
@@ -51,39 +52,42 @@ export default function Sidebar() {
                     return (
                         <Link key={href} href={href}>
                             <div className={cn(
-                                "flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors cursor-pointer",
+                                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200 cursor-pointer",
                                 active
-                                    ? "bg-secondary font-medium text-foreground"
-                                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                                    ? "bg-emerald-600 text-white shadow-md font-medium"
+                                    : "text-slate-300 hover:text-white hover:bg-slate-700/50"
                             )}>
-                                <Icon size={16} />
+                                <Icon size={18} className={active ? "text-white" : "text-slate-400"} />
                                 {label}
+                                {active && (
+                                    <span className="ml-auto w-1.5 h-1.5 rounded-full bg-white"></span>
+                                )}
                             </div>
                         </Link>
                     );
                 })}
             </nav>
 
-            <Separator />
+            <Separator className="bg-slate-700 my-2" />
 
             {/* Footer */}
-            <div className="px-4 py-4 space-y-3">
-                <div className="space-y-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                        Cluster
+            <div className="px-4 py-5 space-y-4">
+                <div className="space-y-2 bg-slate-800/50 rounded-lg p-3">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                        Infrastructure
                     </p>
-                    <p className="text-xs text-muted-foreground">GKE · europe-west1</p>
-                    <p className="text-xs text-muted-foreground">HPA · 1-5 replicas</p>
+                    <p className="text-xs text-slate-300">Dossier médical · Sécurisé</p>
+                    <p className="text-xs text-slate-300">Hébergé · HDS</p>
                 </div>
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="w-full justify-start gap-2"
+                    className="w-full justify-start gap-2 text-slate-300 hover:text-white hover:bg-slate-800"
                     onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                 >
-                    <Sun size={14} className="dark:hidden" />
-                    <Moon size={14} className="hidden dark:block" />
-                    <span className="text-xs">Thème</span>
+                    <Sun size={14} className="dark:hidden text-amber-400" />
+                    <Moon size={14} className="hidden dark:block text-emerald-300" />
+                    <span className="text-xs">Changer de thème</span>
                 </Button>
             </div>
         </aside>
